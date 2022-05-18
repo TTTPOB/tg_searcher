@@ -60,6 +60,28 @@ class BackendBot:
         else:
             return self._indexer.ix.is_empty()
 
+    async def import_json(self, json_dict: Dict, call_back=None):
+        writer = self._indexer.ix.writer()
+        chat_id = json_dict["id"]
+        share_id = get_share_id(chat_id)
+        self._logger.info(f"Importing historying from {share_id}")
+        self.monitored_chats.add(share_id)
+        for tg_msg_dict in json_dict["messages"]:
+            if msg_text:=tg_msg_dict["text"]:
+                url = f"https://t.me/c/{share_id}/{tg_msg_dict['from_id']}"
+                sender = tg_msg_dict["from"]
+                msg = IndexMsg(
+                    content = msg_text,
+                    url = url,
+                    chat_id=chat_id,
+                    post_time=datetime.strptime(tg_msg_dict["date"], "%Y-%m-%dT%H:%M:%S"),
+                    sender = sender,
+                )
+                self._indexer.add_document(msg, writer)
+                self.newest_msg[share_id] = msg
+                await call_back(tg_msg_dict["id"])
+        writer.commit()
+
     async def download_history(self, chat_id: int, min_id: int, max_id: int, call_back=None):
         writer = self._indexer.ix.writer()
         share_id = get_share_id(chat_id)

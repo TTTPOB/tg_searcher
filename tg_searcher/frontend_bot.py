@@ -1,9 +1,10 @@
 import html
 from time import time
-from typing import Optional, List, Tuple, Set, Union
+from typing import Optional, List, Tuple, Set, Union, Dict
 from traceback import format_exc
 from argparse import ArgumentParser
 import shlex
+import json
 
 import whoosh.index
 from telethon import TelegramClient, events, Button
@@ -59,6 +60,7 @@ class BotFrontend:
             proxy=common_cfg.proxy
         )
         self._cfg = cfg
+        self._common_cfg = common_cfg
         self._redis = Redis(host=cfg.redis_host[0], port=cfg.redis_host[1], decode_responses=True)
         self._logger = get_logger(f'bot-frontend:{frontend_id}')
         self._admin = None  # to be initialized in start()
@@ -181,6 +183,12 @@ class BotFrontend:
                 self._logger.info(f'start downloading history of {chat_id} (min={min_id}, max={max_id})')
                 await self._download_history(event, chat_id, min_id, max_id)
                 self._logger.info(f'succeed downloading history of {chat_id} (min={min_id}, max={max_id})')
+        elif text.startswith('/import_json'):
+            json_dir = f"{self._common_cfg.runtime_dir}/import_json"
+            json_file_path = event.message.download_media(json_dir)
+            with open(json_file_path, 'r') as f:
+                json_dict = json.load(f)
+            await self._import_json(json_dict)
 
         elif text.startswith('/monitor_chat'):
             args = self.chat_ids_parser.parse_args(shlex.split(text)[1:])
@@ -249,6 +257,31 @@ class BotFrontend:
         self._redis.set(f'{self.id}:query_text:{event.chat_id}:{msg.id}', q)
         if chats:
             self._redis.set(f'{self.id}:query_chats:{event.chat_id}:{msg.id}', ','.join(map(str, chats)))
+
+    async def _import_json(self, event: events.NewMessage.Event, json_dict: Dict):
+        chat_id = json_dict['id']
+        chat_html = await self.backend.format_dialog_html(chat_id)
+        if not self.backend.is_empty(chat_id):
+            await event.reply(
+                f'错误: {chat_html} 的索引非空，下载历史会导致索引重复消息，'
+                f'请先 /clear 清除索引，或者通过 --min, --max 参数指定索引范围',
+                parse_mode='html')
+            return
+        cnt: int = 0
+        prog_msg: Optional[TgMessage] = None
+        async def call_back(msg_id):
+            nonlocal prog_msg, cnt
+            remaining_msg_cnt = len(json_dict['messages']) - cnt
+            if cnt % 1000 == 0:
+                prog_text = f'{chat_html}: 还需下载大约 {remaining_msg_cnt} 条消息'
+                if prog_msg is not None:
+                    await prog_msg.edit(prog_text, parse_mode='html')
+                else:
+                    prog_msg = await event.reply(prog_text, parse_mode='html')
+            cnt += 1
+        await self.backend.import_json(chat_id, json_dict, call_back)
+        await event.reply(f'{chat_html} 下载完成，共计 {cnt} 条消息', parse_mode='html')
+        await prog_msg.delete()
 
     async def _download_history(self, event: events.NewMessage.Event, chat_id: int, min_id: int, max_id: int):
         chat_html = await self.backend.format_dialog_html(chat_id)
