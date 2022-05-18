@@ -68,7 +68,7 @@ class BackendBot:
         self.monitored_chats.add(share_id)
         for tg_msg_dict in json_dict["messages"]:
             if msg_text:=tg_msg_dict["text"]:
-                url = f"https://t.me/c/{share_id}/{tg_msg_dict['from_id']}"
+                url = f"https://t.me/c/{share_id}/{tg_msg_dict['id']}"
                 sender = tg_msg_dict["from"]
                 msg = IndexMsg(
                     content = msg_text,
