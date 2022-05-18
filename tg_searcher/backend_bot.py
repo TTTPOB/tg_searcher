@@ -70,6 +70,8 @@ class BackendBot:
             if msg_text:=tg_msg_dict["text"]:
                 url = f"https://t.me/c/{share_id}/{tg_msg_dict['id']}"
                 sender = tg_msg_dict["from"]
+                if type(msg_text) == dict:
+                    msg_text = " ".join([subdict["text"] for subdict in msg_text])
                 msg = IndexMsg(
                     content = msg_text,
                     url = url,
