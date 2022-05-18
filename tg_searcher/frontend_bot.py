@@ -279,7 +279,7 @@ class BotFrontend:
                 else:
                     prog_msg = await event.reply(prog_text, parse_mode='html')
             cnt += 1
-        await self.backend.import_json(chat_id, json_dict, call_back)
+        await self.backend.import_json(json_dict, call_back)
         await event.reply(f'{chat_html} 下载完成，共计 {cnt} 条消息', parse_mode='html')
         await prog_msg.delete()
 
