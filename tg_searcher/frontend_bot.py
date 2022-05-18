@@ -371,6 +371,7 @@ class BotFrontend:
         admin_commands = [
             BotCommand(command="download_chat", description='[--min=MIN] [--max=MAX] [CHAT...] '
                                                             '下载并索引会话的历史消息，并将其加入监听列表'),
+            BotCommand(command="import_json", description='从 JSON 文件导入消息'),
             BotCommand(command="monitor_chat", description='CHAT... 将会话加入监听列表'),
             BotCommand(command="stat", description='查询后端索引状态'),
             BotCommand(command="clear", description='[CHAT...] 清除索引'),
