@@ -185,7 +185,7 @@ class BotFrontend:
                 self._logger.info(f'succeed downloading history of {chat_id} (min={min_id}, max={max_id})')
         elif text.startswith('/import_json'):
             json_dir = f"{self._common_cfg.runtime_dir}/import_json"
-            json_file_path = event.message.download_media(json_dir)
+            json_file_path = await event.message.download_media(json_dir)
             with open(json_file_path, 'r') as f:
                 json_dict = json.load(f)
             await self._import_json(json_dict)
