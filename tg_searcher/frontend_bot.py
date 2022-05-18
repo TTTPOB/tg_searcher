@@ -184,11 +184,7 @@ class BotFrontend:
                 await self._download_history(event, chat_id, min_id, max_id)
                 self._logger.info(f'succeed downloading history of {chat_id} (min={min_id}, max={max_id})')
         elif text.startswith('/import_json'):
-            json_dir = f"{self._common_cfg.runtime_dir}/import_json"
-            json_file_path = await event.message.download_media(json_dir)
-            with open(json_file_path, 'r') as f:
-                json_dict = json.load(f)
-            await self._import_json(json_dict)
+            await self._import_json(event)
 
         elif text.startswith('/monitor_chat'):
             args = self.chat_ids_parser.parse_args(shlex.split(text)[1:])
@@ -258,7 +254,11 @@ class BotFrontend:
         if chats:
             self._redis.set(f'{self.id}:query_chats:{event.chat_id}:{msg.id}', ','.join(map(str, chats)))
 
-    async def _import_json(self, event: events.NewMessage.Event, json_dict: Dict):
+    async def _import_json(self, event: events.NewMessage.Event):
+        json_dir = f"{self._common_cfg.runtime_dir}/import_json"
+        json_file_path = await event.message.download_media(json_dir)
+        with open(json_file_path, 'r') as f:
+            json_dict = json.load(f)
         chat_id = json_dict['id']
         chat_html = await self.backend.format_dialog_html(chat_id)
         if not self.backend.is_empty(chat_id):
